@@ -1,0 +1,232 @@
+using System;
+namespace BatleCity
+{
+    class Element
+    {
+        public char Output { get; set; }
+        public int X { get; set; }
+        public int Y { get; set; }
+        public virtual void Colision(Engine map, Player heroes, int x, int y)
+        {
+            map.Map[heroes.X, heroes.Y] = new Empty();
+            map.Map[x, y] = heroes;
+            (heroes.X, heroes.Y) = (x, y);
+        }
+
+    }
+    class Destructible : Element { }
+    class Target : Destructible
+    {
+        public Target()
+        {
+            Output = 'O';
+        }
+        public override void Colision(Engine map, Player heroes, int x, int y)
+        {
+            heroes.timegame = false;
+            map.isWin = false;
+        }
+    }
+
+    class Player : Element
+    {
+        public int Count = 0;
+        public bool timegame = true;
+        public Player()
+        {
+            Output = 'V';
+        }
+        public void Shoot(Engine map,Player heroes)
+        {
+            switch (Output)
+            {
+                case 'V':
+                    for(int y = this.Y; y < 10; y++)
+                    {
+                       if(map.Map[this.X, y] is Target || map.Map[this.X, y] is Wall)
+                        {
+                            if (map.Map[this.X, y] is Target) heroes.Count++;
+                            map.Map[this.X, y] = new Empty();
+                            y = 11;
+
+                        }
+                    }
+                    break;
+                case '^':
+                    for (int y = this.Y; y > 0; y--)
+                    {
+                        if (map.Map[this.X, y] is Destructible)
+                        {
+                            if (map.Map[this.X, y] is Target) heroes.Count++;
+                            map.Map[this.X, y] = new Empty();
+                            y = 0;
+
+                        }
+                    }
+                    break;
+                case '>':
+                    for (int x = this.X; x < 11; x++)
+                    {
+                        if (map.Map[x, this.Y] is Destructible)
+                        {
+                            if (map.Map[x, this.Y] is Target) heroes.Count++;
+                            map.Map[x, this.Y] = new Empty();
+                            x = 11;
+                        }
+                    }
+                    break;
+                case '<':
+                    for (int x = this.X; x > 0; x--)
+                    {
+                        if (map.Map[x, this.Y] is Destructible)
+                        {
+                            if (map.Map[x, this.Y] is Target) heroes.Count++;
+                            map.Map[x, this.Y] = new Empty();
+                            x = 0;
+                        }
+                    }
+                    break;
+            }
+        }
+
+    }
+    class Empty : Element
+    {
+        public Empty()
+        {
+            Output = ':';
+        }
+    }
+    class Finish : Element
+    {
+        public Finish()
+        {
+            Output = 'X';
+        }
+        public override void Colision(Engine map, Player heroes, int x, int y)
+        {
+            if (heroes.Count == 5)
+            {
+                map.isWin = true;
+                heroes.timegame = false;
+            }
+        }
+    }
+    class Wall : Destructible
+    {
+        public Wall()
+        {
+            Output = '#';
+        }
+        public override void Colision(Engine map, Player heroes,int x ,int y){}
+    }
+    class Engine
+    {
+        public Element[,] Map = new Element[12, 12];
+        public bool isWin;
+        public void CreatMap()
+        {
+            for (int y = 0; y < 12; y++)
+            {
+                for (int x = 0; x < 12; x++)
+                {
+                    if (x == 0 || x == 11 || y == 0 || y == 11)
+                    {
+                        Map[x, y] = new Wall();
+                    }
+                    else
+                    {
+                        Map[x, y] = new Empty();
+                    }
+                }
+            }
+        }
+        public void Draw()
+        {
+
+            for (int y = 0; y < Map.GetLength(1); y++)
+            {
+                for (int x = 0; x < Map.GetLength(0); x++)
+                {
+                    Console.Write(Map[x, y].Output);
+                }
+                Console.WriteLine();
+            }
+        }
+        
+    }
+    class Program
+    {
+        public static void Main(string[] args)
+        {
+            Target target1 = new Target();
+            Engine map = new Engine();
+            Finish finish = new Finish();
+            map.CreatMap();
+            Player heroes = new Player();
+            (heroes.X, heroes.Y) = (5, 10);
+            for (int i = 1; i < 11; i++)
+            {
+                map.Map[i, 3] = new Wall();
+            }
+            map.Map[1, 1] = finish;
+            map.Map[5, 5] = target1;
+            map.Map[7, 9] = target1;
+            map.Map[6, 2] = target1;
+            map.Map[1, 8] = target1;
+            map.Map[9, 5] = target1;
+            map.Map[heroes.X, heroes.Y] = heroes;
+            Console.CursorVisible = false;
+            char[] turn = { '<', '^', '>', 'V', '<' };
+            int point = 1;
+            while (heroes.timegame)
+            {
+                map.Map[heroes.X, heroes.Y] = heroes;
+                Console.SetCursorPosition(0, 0);
+                heroes.Output = turn[point > 0 ? point % 4 : 4 + (point % 4)];
+                map.Draw();
+                Console.WriteLine(Convert.ToString(heroes.Count) + " point");
+                ConsoleKeyInfo key = Console.ReadKey(true);
+                switch (key.Key)
+                {
+                    case ConsoleKey.LeftArrow:
+                        if (heroes.X > 1)
+                        {
+                            map.Map[heroes.X - 1, heroes.Y].Colision(map, heroes, heroes.X - 1, heroes.Y);
+                        }
+                        break;
+                    case ConsoleKey.RightArrow:
+                        if (heroes.X < 10)
+                        {
+                            map.Map[heroes.X + 1, heroes.Y].Colision(map, heroes, heroes.X + 1, heroes.Y);
+                        }
+                        break;
+                    case ConsoleKey.UpArrow:
+                        if (heroes.Y > 1)
+                        {
+                            map.Map[heroes.X, heroes.Y - 1].Colision(map, heroes, heroes.X, heroes.Y - 1);
+                        }
+                        break;
+                    case ConsoleKey.DownArrow:
+                        if (heroes.Y < 10)
+                        {
+                            map.Map[heroes.X, heroes.Y + 1].Colision(map, heroes, heroes.X, heroes.Y + 1);
+                        }
+                        break;
+                    case ConsoleKey.Q:
+                        point--;
+                        break;
+                    case ConsoleKey.E:
+                        point++;
+                        break;
+                    case ConsoleKey.Spacebar:
+                        heroes.Shoot(map, heroes);
+                        break;
+                }
+
+            }
+            Console.Clear();
+            Console.WriteLine(map.isWin?"You win":"You lose");
+        }
+    }
+}
